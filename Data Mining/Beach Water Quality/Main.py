@@ -74,8 +74,10 @@ class Data_Processing:
         #将第三、四、六、七列的数据按照海滩名进行分组，用label_dict={}存储
         for index,row in self.data.iterrows():
             Beach_Name_key = row.iloc[0]
+            Measurement_Date_And_Time=row.iloc[1]
             Water_Temperature_values = row.iloc[2]
             Turbidity_label_values = row.iloc[3]
+            Transducer_Depth=row.iloc[4]
             Transducer_Depth_values = row.iloc[5]
             Wave_Height_values = row.iloc[6]
             Wave_Period_values = row.iloc[7]
