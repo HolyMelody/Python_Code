@@ -4,7 +4,7 @@
         "envs",
         ".pyenv",
         ".direnv",
-        ".env",
+        ".env"
     ],
     
     
@@ -141,6 +141,6 @@
     "workbench.productIconTheme": "vscode-v1-icons",
     "settingsSync.ignoredExtensions": [
         
-    ],
+    ]
     
 }
