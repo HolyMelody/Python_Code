@@ -1,9 +1,17 @@
+#数据处理
+import numpy as np
+import pandas as pd
+
+# 决策树
 from sklearn.tree import DecisionTreeClassifier
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
 
-import numpy as np
-import pandas as pd
+#盒图
+import seaborn as sb
+import matplotlib.pyplot as plt
+
+
 def train_and_evaluate_decision_tree(X, y):
     """
     使用输入的特征数据和目标数据训练决策树模型，并计算训练集和测试集的准确率
@@ -37,10 +45,30 @@ def train_and_evaluate_decision_tree(X, y):
     # 返回训练集和测试集的准确率
     return train_accuracy, test_accuracy
 
+# def Box_Plot(dataFrame):
+    
+#     # 创建一个指定大小的图像
+#     plt.figure(figsize=(10, 6))
+
+#     # 绘制盒图
+#     columns_to_process = ['Wave_Period']
+#     sb.boxplot(dataFrame[columns_to_process],color='skyblue',flierprops=dict(markerfacecolor='r', marker='s'))
+#     # 设置y轴标签
+#     plt.ylabel("Data (inches)")
+
+#     # 显示盒图
+#     plt.show()
+
+
+
+
+
 # 读取CSV文件
 df = pd.read_csv('data.csv')
+
+# Box_Plot(df)
 # 指定需要计算均值和填充的列
-columns_to_process = ['Water_Temperature', 'Turbidity','Transducer_Depth', 'Wave_Height','Wave_Period','Battery_Life']
+columns_to_process = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth','Battery_Life']
 # 计算均值
 mean_values = df[columns_to_process].\
 apply(lambda x: np.mean(x[x >= 0]), axis=0)

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 # def Dict_to_list(self,data_dict):#用均值填充NaN
 #     X = []
@@ -88,6 +88,35 @@ import numpy as np
 #     Turbidity_label_dict,Transducer_Depth_label_dict,\
 #     Wave_Height_label_dict,Wave_Period_label_dict,\
 #     Battery_Life_label_dict
+
+def Time_Plot(data):
+    Beach_Name = ['Montrose Beach', 'Ohio Street Beach',
+                  'Calumet Beach', '63rd Street Beach', 'Osterman Beach', 'Rainbow Beach']
+
+    plt.figure(figsize=(10, 6))  # Create a single figure
+
+    line_styles = ['-', '--', '-.', ':', '-.', '--']  # Define line styles
+    line_colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown']  # Define line colors
+
+    for i, beach_name in enumerate(Beach_Name):
+        dataFrame = data.loc[data['Beach_Name'] == beach_name]
+        dataFrame['Measurement_Date_And_Time'] = pd.to_datetime(dataFrame['Measurement_Date_And_Time'])
+        dataFrame['月份'] = dataFrame['Measurement_Date_And_Time'].dt.strftime('%Y-%m')
+        columns_to_process = ['Wave_Height', 'Wave_Period']
+        monthly_data = dataFrame.groupby('月份')[columns_to_process].mean()
+
+        plt.plot(monthly_data.index, monthly_data['Wave_Height'], linestyle=line_styles[i], color=line_colors[i], label=beach_name + ' Wave_Height')
+        plt.plot(monthly_data.index, monthly_data['Wave_Period'], linestyle=line_styles[i], color=line_colors[i], label=beach_name + ' Wave_Period')
+
+    plt.title('Time_Data')
+    plt.xlabel('Month')
+    plt.ylabel('Mean')
+    plt.legend()
+    plt.show()
+
+
+df = pd.read_csv('data.csv')
+Time_Plot(df)
 
 
 # df = pd.read_csv('data.csv')
