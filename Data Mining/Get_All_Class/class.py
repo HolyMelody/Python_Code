@@ -145,6 +145,28 @@ class Data_Processing:
         print("Yes,data padding complete!")
         return data_paded
     
+    #将数据按沙滩名排列
+    def Data_As_Beach_Name(self,data):
+        data = data.copy()
+        # 将DataFrame 数据按第一列的所有相同的Beach_Name排列，然后按照时间顺序排列(初始数据已经3按照时间排列)
+        data = data.sort_values(by=['Beach_Name','Measurement_Date_And_Time'])
+        print("Yes,data as beach name complete!")
+        return data
+    def Data_Padding_As_Beach_name(self, data, Features):
+        data = data.copy()
+        columns_to_process = Features
+        
+        # 按照'Beach_Name'列进行分组，并计算每个分组的均值
+        mean_values = data.groupby('Beach_Name')[columns_to_process].transform('mean')
+        
+        # 填充负值和NaN值
+        data[columns_to_process] = data[columns_to_process].mask((data[columns_to_process] < 0) | data[columns_to_process].isna(), mean_values)
+        
+        # 将结果保存为DataFrame，并返回
+        data_padded = pd.DataFrame(data)
+        print("是的，按照'Beach_Name'列进行数据填充完成！")
+        return data_padded
+    
     #将填充结束后的数据装换为训练接口
     def Return_Port(self,data,Features):
         columns_to_process = Features
@@ -201,9 +223,13 @@ if __name__ == "__main__":
     Original_Data = pd.read_csv('data.csv')  
     Features = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth','Battery_Life']
     Data_Processing = Data_Processing(Original_Data)
-
-    Paded_Features = ['Wave_Height','Wave_Period']
-    Paded_Data = Data_Processing.Data_Padding(Original_Data,Features)
+    Data_as_beach_name = Data_Processing.Data_As_Beach_name(Original_Data)
+    Data_padding_as_beach_name = Data_Processing.Data_Padding_As_Beach_name(Original_Data,Features)
+    Data_padding_as_beach_name.to_csv('Data_padding_as_beach_name.csv')
+    #save to csv
+    #Data_as_beach_name.to_csv('Data_as_beach_name.csv')
+    # Paded_Features = ['Wave_Height','Wave_Period']
+    # Paded_Data = Data_Processing.Data_Padding(Original_Data,Features)
     #Box_plot = Data_Processing.Box_Plot(data)
-    Time_plot = Data_Processing.Time_Plot(Original_Data,Paded_Features)
-    Time_plot = Data_Processing.Time_Plot(Paded_Data,Paded_Features)
+    # Time_plot = Data_Processing.Time_Plot(Original_Data,Paded_Features)
+    # Time_plot = Data_Processing.Time_Plot(Paded_Data,Paded_Features)
