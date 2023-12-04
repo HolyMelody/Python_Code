@@ -18,10 +18,11 @@ import os
 
 class Data_Processing:
     def __init__(self, data):
-        self.data =data
+        self.data = data.copy()
 
     #先行按沙滩名分类
     def data_cleaning(self,data):
+        data = data.copy()
         Water_Temperature_label_dict={}#水温
         Turbidity_label_dict={}#浑浊度
         Transducer_Depth_label_dict={}#换能器深度
@@ -78,11 +79,13 @@ class Data_Processing:
         Battery_Life_label_dict
     
     #数据可视化 - 盒图
-    def Box_Plot(self,data):
+    def Box_Plot(self,data,Features):
+        data = data.copy()
+        columns_to_process = Features
         # 创建一个指定大小的图像
         plt.figure(figsize=(10, 6))
         # 绘制盒图
-        columns_to_process = ['Water_Temperature']
+        
         sb.boxplot(data[columns_to_process],color='skyblue',flierprops=dict(markerfacecolor='r', marker='s'))
         # 设置y轴标签
         plt.ylabel("Data (inches)")
@@ -90,7 +93,9 @@ class Data_Processing:
         plt.show()
 
     # 按沙滩名绘制时间-数据序列图
-    def Time_Plot(self,data):
+    def Time_Plot(self,data,features):
+        data = data.copy()
+        columns_to_process = features  #columns_to_process = ['Wave_Height', 'Wave_Period']
         Beach_Name = ['Montrose Beach', 'Ohio Street Beach',
                     'Calumet Beach', '63rd Street Beach', 'Osterman Beach', 'Rainbow Beach']
 
@@ -103,7 +108,6 @@ class Data_Processing:
             dataFrame = data.loc[data['Beach_Name'] == beach_name]
             dataFrame['Measurement_Date_And_Time'] = pd.to_datetime(dataFrame['Measurement_Date_And_Time'])
             dataFrame['月份'] = dataFrame['Measurement_Date_And_Time'].dt.strftime('%Y-%m')
-            columns_to_process = ['Wave_Height', 'Wave_Period']
             monthly_data = dataFrame.groupby('月份')[columns_to_process].mean()
 
             plt.plot(monthly_data.index, monthly_data['Wave_Height'], linestyle=line_styles[i], color=line_colors[i], label=beach_name + ' Wave_Height')
@@ -111,7 +115,7 @@ class Data_Processing:
 
         plt.title('Time_Data')
         plt.xlabel('Month')
-        plt.ylabel('Mean')
+        plt.ylabel('Month_Mean_Data')
         plt.legend()
         plt.show()
 
@@ -128,6 +132,7 @@ class Data_Processing:
 
     # 填充负值和NaN值
     def Data_Padding(self,data,Features):
+        data = data.copy()
         columns_to_process = Features
         # 计算均值
         mean_values = data[columns_to_process].\
@@ -137,6 +142,7 @@ class Data_Processing:
         apply(lambda x: x.mask((x < 0) | x.isna(), mean_values[x.name]), axis=0)
         # 将结果保存为dataframe,并返回
         data_paded = pd.DataFrame(data)
+        print("Yes,data padding complete!")
         return data_paded
     
     #将填充结束后的数据装换为训练接口
@@ -190,7 +196,14 @@ class Data_Classification():
 #主函数
 if __name__ == "__main__":
     #从本地读取数据
-    script_path = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(script_path, "data.csv")
-    data = pd.read_csv(file_path)  
+    # script_path = os.path.dirname(os.path.abspath(__file__))
+    # file_path = os.path.join(script_path, "data.csv")
+    Original_Data = pd.read_csv('data.csv')  
     Features = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth','Battery_Life']
+    Data_Processing = Data_Processing(Original_Data)
+
+    Paded_Features = ['Wave_Height','Wave_Period']
+    Paded_Data = Data_Processing.Data_Padding(Original_Data,Features)
+    #Box_plot = Data_Processing.Box_Plot(data)
+    Time_plot = Data_Processing.Time_Plot(Original_Data,Paded_Features)
+    Time_plot = Data_Processing.Time_Plot(Paded_Data,Paded_Features)

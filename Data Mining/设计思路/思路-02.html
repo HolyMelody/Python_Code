@@ -53,7 +53,7 @@ Wave_Period的标准差为12220.69686378749也很大，需要特殊处理<br>
     <span class="token comment"># 显示盒图</span>
     plt<span class="token punctuation">.</span>show<span class="token punctuation">(</span><span class="token punctuation">)</span>
 </code></pre><p>按月份将六个沙滩的Wave_Height 和Wava_period 绘制折线图<br>
-<img src="image-15.png" alt="Alt text"></p>
+<img src="image-20.png" alt="Alt text"></p>
 <pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-def">def</span> <span class="token function">Time_Plot</span><span class="token punctuation">(</span>data<span class="token punctuation">)</span><span class="token punctuation">:</span>
     Beach_Name <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token string">'Montrose Beach'</span><span class="token punctuation">,</span> <span class="token string">'Ohio Street Beach'</span><span class="token punctuation">,</span>
                   <span class="token string">'Calumet Beach'</span><span class="token punctuation">,</span> <span class="token string">'63rd Street Beach'</span><span class="token punctuation">,</span> <span class="token string">'Osterman Beach'</span><span class="token punctuation">,</span> <span class="token string">'Rainbow Beach'</span><span class="token punctuation">]</span>
@@ -106,7 +106,9 @@ df<span class="token punctuation">[</span>columns_to_process<span class="token p
 <span class="token builtin">apply</span><span class="token punctuation">(</span><span class="token keyword keyword-lambda">lambda</span> x<span class="token punctuation">:</span> x<span class="token punctuation">.</span>mask<span class="token punctuation">(</span><span class="token punctuation">(</span>x <span class="token operator">&lt;</span> <span class="token number">0</span><span class="token punctuation">)</span> <span class="token operator">|</span> x<span class="token punctuation">.</span>isna<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> mean_values<span class="token punctuation">[</span>x<span class="token punctuation">.</span>name<span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">,</span> axis<span class="token operator">=</span><span class="token number">0</span><span class="token punctuation">)</span>
 <span class="token comment"># 将结果保存回原CSV文件</span>
 df<span class="token punctuation">.</span>to_csv<span class="token punctuation">(</span><span class="token string">'Data.csv'</span><span class="token punctuation">,</span> index<span class="token operator">=</span><span class="token boolean">False</span><span class="token punctuation">)</span>
-</code></pre><h3 id="分类">分类 </h3>
+</code></pre><p>填充之后的月份折线图：<br>
+<img src="image-21.png" alt="Alt text"></p>
+<h3 id="分类">分类 </h3>
 <p>最终接口：</p>
 <pre data-role="codeBlock" data-info="python" class="language-python python"><code>X <span class="token operator">=</span> np<span class="token punctuation">.</span>array<span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">[</span><span class="token number">5.1</span><span class="token punctuation">,</span> <span class="token number">3.5</span><span class="token punctuation">,</span> <span class="token number">1.4</span><span class="token punctuation">,</span> <span class="token number">0.2</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
               <span class="token punctuation">[</span><span class="token number">4.9</span><span class="token punctuation">,</span> <span class="token number">3.0</span><span class="token punctuation">,</span> <span class="token number">1.4</span><span class="token punctuation">,</span> <span class="token number">0.2</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
