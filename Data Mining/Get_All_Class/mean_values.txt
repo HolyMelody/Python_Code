@@ -1,0 +1,10 @@
+                   Water_Temperature  Turbidity  ...  Transducer_Depth  Battery_Life
+Beach_Name                                       ...                                
+63rd Street Beach          18.459901   4.313150  ...          1.755311     10.774788
+Calumet Beach              20.372929   1.886926  ...          1.449376     10.973841
+Montrose Beach             18.640534   4.221280  ...          1.638710     11.078729
+Ohio Street Beach          20.273603   7.818611  ...          1.735757     11.055395
+Osterman Beach             17.933615   8.709764  ...          1.359515     11.138339
+Rainbow Beach              19.106339   3.228750  ...          1.553982     11.198938
+
+[6 rows x 6 columns]
