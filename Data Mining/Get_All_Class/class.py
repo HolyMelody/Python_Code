@@ -20,6 +20,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+#随机森林交叉验证
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.ensemble import RandomForestClassifier
 
 #盒图
 import seaborn as sb
@@ -173,6 +176,7 @@ class Data_Processing():
         data = data.sort_values(by=['Beach_Name','Measurement_Date_And_Time'])
         #save as cvs
         data.to_csv('Data_as_beach_name.csv')
+        data.groupby('Beach_Name').describe().to_csv('Data_as_beach_name_Features.csv')
         print("Yes,data as beach name complete!")
         return data
 
@@ -228,7 +232,7 @@ class Data_Processing():
         upper_bound = x.quantile(0.75) + 1.5 * (x.quantile(0.75) - x.quantile(0.25))
         return ((x < lower_bound) | (x > upper_bound)).sum()
 
-
+    # 可视化离群值和缺失值
     def Visualize_Outliers(self,data,Features):
         data= data.copy()
         # Features = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth','Battery_Life']
@@ -262,6 +266,25 @@ class Data_Processing():
         # plt.legend(["Missing Values", "Negative Values"])
         # plt.xticks(rotation=15)  # 将横坐标的标签旋转45度
         # plt.show()
+    # 绘制热图
+    def Visualize_Correlation(self,data, column_to_analyze, features_to_process):
+        # 计算相关性
+        correlation_matrix = data[features_to_process].corr()
+
+        # 选择要分析的列
+        selected_correlation = correlation_matrix[column_to_analyze]
+        
+        # 设置字体的属性
+        # plt.rcParams["font.sans-serif"] = "Arial Unicode MS"
+        plt.rcParams["font.sans-serif"] = "SimHei"
+        plt.rcParams["axes.unicode_minus"] = False
+        # 绘制热图
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', linewidths=.5)
+        plt.title('相关性热图')
+        plt.show()
+        print("热图已经绘制完毕！")
+    
     def Data_Padding_As_Beach_name(self, data, Features,Fill_Way='Deficiency'):#'Negative''Quartile'
         data = data.copy()
         columns_to_process = Features
@@ -288,6 +311,9 @@ class Data_Processing():
         data_padded.to_csv('Data_padding_as_beach_name.csv',index=False)
         
         return data_padded
+    
+
+    
     #进一步处理离群值
     def Data_Drop_Qartile(self, data, Features):
         features = Features
@@ -325,9 +351,8 @@ class Data_Classification:
         for i in tqdm(range(10)):
             #time.sleep(0.1)  # 模拟训练过程
             train_accuracy, test_accuracy= self.\
-            Train_and_Evaluate_CNN(X, y)
+            Random_Forest_Classification(X, y)
             #Train_and_Evaluate_Neural_Network(X, y)
-            #Random_Forest_Classification(X, y)
             #train_and_evaluate_decision_tree(X,y)
 
 
@@ -446,13 +471,6 @@ class Data_Classification:
         return train_accuracy.item(), test_accuracy.item()
 
 
-    def Train_and_Evaluate_CNN(self,X, y):
-        """
-        定义神经网络模型
-        :param X: 训练数据
-        :param y: 训练标签
-        :return:
-        """
 
 class Property_Metrics:
     def __init__(self,Original_Data):
@@ -516,7 +534,7 @@ if __name__ == "__main__":
     # file_path = os.path.join(script_path, "data.csv")
     Original_Data = pd.read_csv('data.csv')  
     Features_to_process = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth','Battery_Life']
-    Features = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period']
+    Features = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth']
     #数据处理
     Data_processing = Data_Processing()
     #Data_as_beach_name = Data_Processing.Data_As_Beach_Name(Original_Data)
@@ -525,10 +543,11 @@ if __name__ == "__main__":
     #Data_drop_qartile = Data_Processing.Data_Drop_Qartile(Original_Data,Features_to_process)
     #沙滩分类
     #Start_Classification
-    Data_classification = Data_Classification()
-    Data_classification.Start_Classification(Data_padding_as_beach_name,Features)
-    
-
+    # Data_classification = Data_Classification()
+    # Data_classification.Start_Classification(Data_padding_as_beach_name,Features)
+    #Data_processing.Data_As_Beach_Name(Original_Data,Features_to_process)
+    Features_Anasysis = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth','Battery_Life']
+    Data_processing.Visualize_Correlation(Original_Data,'Transducer_Depth',Features_Anasysis)
     
     #冲浪指数
     # Property_metrics = Property_Metrics(Original_Data)
