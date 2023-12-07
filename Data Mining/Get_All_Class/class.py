@@ -6,13 +6,21 @@ import math
 # 决策树
 from sklearn.tree import DecisionTreeClassifier
 from sklearn import metrics
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
+#交叉验证
+from sklearn.model_selection import cross_validate
 #决策树plus
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import accuracy_score
+#神经网络
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+
 #盒图
 import seaborn as sb
 import matplotlib.pyplot as plt
@@ -29,7 +37,7 @@ import seaborn as sns
 from tqdm import tqdm
 import time
 
-class Data_Processing:
+class Data_Processing():
     def __init__(self):
         pass
 
@@ -313,16 +321,19 @@ class Data_Classification:
         #Return_Port
         Data_padding_as_beach_name=Data_padded
         Features = features 
-        X,y = Data_Processing.Return_Port(Data_padding_as_beach_name,Features)
+        X,y = Data_Processing().Return_Port(Data_padding_as_beach_name,Features)
         for i in tqdm(range(10)):
-            time.sleep(0.1)  # 模拟训练过程
-            train_accuracy, test_accuracy = self.\
-            train_and_evaluate_decision_tree(X,y)
+            #time.sleep(0.1)  # 模拟训练过程
+            train_accuracy, test_accuracy= self.\
+            Train_and_Evaluate_CNN(X, y)
+            #Train_and_Evaluate_Neural_Network(X, y)
+            #Random_Forest_Classification(X, y)
+            #train_and_evaluate_decision_tree(X,y)
 
 
         print("训练集准确率：{:.2f}%".format(train_accuracy * 100))
         print("测试集准确率：{:.2f}%".format(test_accuracy * 100))
-
+        #print("交叉验证准确率：{:.2f}%".format(mean_cv_accuracy * 100))
 
 
     def train_and_evaluate_decision_tree(self,X, y):
@@ -340,10 +351,14 @@ class Data_Classification:
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
 
         # 实例化决策树分类器
-        clf = DecisionTreeClassifier()
+        clf = DecisionTreeClassifier(max_depth= 9)
 
         # 使用训练集数据拟合模型
-        clf.fit(X_train, y_train)
+        decision_tree = clf.fit(X_train, y_train)
+
+        # 使用交叉验证计算模型的准确率
+        cv_scores = cross_val_score(decision_tree, X_train, y_train, cv=5)
+        mean_cv_accuracy = np.mean(cv_scores)
 
         # 使用训练集数据进行预测
         y_train_pred = clf.predict(X_train)
@@ -351,13 +366,93 @@ class Data_Classification:
         # 使用测试集数据进行预测
         y_test_pred = clf.predict(X_test)
 
-        # 计算训练集和测试集的准确率
         train_accuracy = metrics.accuracy_score(y_train, y_train_pred)
         test_accuracy = metrics.accuracy_score(y_test, y_test_pred)
 
         print("决策树模型训练！")
+  
+        return train_accuracy, test_accuracy,mean_cv_accuracy
         # 返回训练集和测试集的准确率
+        # surfing_preferences = {'Water_Temperature': 20, 'Turbidity': 5, 'Wave_Height': 2, 'Wave_Period': 10}
+        # preferred_features = [surfing_preferences['Water_Temperature'], surfing_preferences['Turbidity'], surfing_preferences['Wave_Height'], surfing_preferences['Wave_Period']]
+        # predicted_result = clf.predict([preferred_features])
+        # print("根据您的偏好，推荐的沙滩是：", predicted_result[0])
+
+    def Random_Forest_Classification(self,X, y):
+
+        # 拆分数据集
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # 创建和训练随机森林模型
+        rf = RandomForestClassifier()
+        rf.fit(X_train, y_train)
+
+        # 预测并计算准确率
+        y_train_pred = rf.predict(X_train)
+        train_accuracy = accuracy_score(y_train, y_train_pred)
+        y_test_pred = rf.predict(X_test)
+        test_accuracy = accuracy_score(y_test, y_test_pred)
+        print("随机森林模型训练！")
         return train_accuracy, test_accuracy
+    # 定义神经网络模型神经网络函数名：train_and_evaluate_neural_network
+    def Train_and_Evaluate_Neural_Network(self,X, y):
+        """
+        定义神经网络模型
+        :param X: 训练数据
+        :param y: 训练标签
+        :return:
+        """
+        # 定义神经网络模型
+        model = nn.Sequential(
+            nn.Linear(X.shape[1], 10),
+            nn.ReLU(),
+            nn.Linear(10, 10),
+            nn.ReLU(),
+            nn.Linear(10, 6)  # 这里假设输出是二分类，如果是其他类别数量，需要调整
+        )
+        # 定义损失函数
+        criterion = nn.CrossEntropyLoss()
+        # 定义优化器
+        optimizer = optim.SGD(model.parameters(), lr=0.01)
+        # 将数据转换为张量
+        X = torch.tensor(X, dtype=torch.float32)
+        # 将字符串标签转换为整数形式的类别标签
+        label_to_index = {label: index for index, label in enumerate(set(y))}
+        y = torch.tensor([label_to_index[elem] for elem in y], dtype=torch.long)
+        # 划分训练集和测试集
+        train_size = int(0.7 * X.shape[0])
+        X_train, X_test = X[:train_size], X[train_size:]
+        y_train, y_test = y[:train_size], y[train_size:]
+        # 开始训练
+        for epoch in range(2000):
+            # 前向传播
+            outputs = model(X_train)
+            loss = criterion(outputs, y_train)
+            # 反向传播和优化
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            # 打印训练过程中的损失
+            if (epoch + 1) % 10 == 0:
+                print(f'Epoch [{epoch + 1}/{2000}], Loss: {loss.item()}')
+        # 计算训练集和测试集的准确率
+        with torch.no_grad():
+            train_outputs = model(X_train)
+            _, train_predicted = torch.max(train_outputs, 1)
+            train_accuracy = (train_predicted == y_train).float().mean()
+            test_outputs = model(X_test)
+            _, test_predicted = torch.max(test_outputs, 1)
+            test_accuracy = (test_predicted == y_test).float().mean()
+        return train_accuracy.item(), test_accuracy.item()
+
+
+    def Train_and_Evaluate_CNN(self,X, y):
+        """
+        定义神经网络模型
+        :param X: 训练数据
+        :param y: 训练标签
+        :return:
+        """
 
 class Property_Metrics:
     def __init__(self,Original_Data):
@@ -423,19 +518,21 @@ if __name__ == "__main__":
     Features_to_process = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth','Battery_Life']
     Features = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period']
     #数据处理
-    #Data_Processing = Data_Processing(Original_Data)
+    Data_processing = Data_Processing()
     #Data_as_beach_name = Data_Processing.Data_As_Beach_Name(Original_Data)
     #Data_Processing.Visualize_Missing_and_Outliers(Original_Data,Features_to_process)
-    #Data_padding_as_beach_name = Data_Processing.Data_Padding_As_Beach_name(Original_Data,Features_to_process,Fill_Way='Deficiency')
+    Data_padding_as_beach_name = Data_processing.Data_Padding_As_Beach_name(Original_Data,Features_to_process,Fill_Way='Negative')
     #Data_drop_qartile = Data_Processing.Data_Drop_Qartile(Original_Data,Features_to_process)
     #沙滩分类
     #Start_Classification
-    #Data_classification = Data_Classification()
-    #Data_classification.Start_Classification(Data_padding_as_beach_name,Features_to_process)
+    Data_classification = Data_Classification()
+    Data_classification.Start_Classification(Data_padding_as_beach_name,Features)
+    
+
     
     #冲浪指数
-    Property_metrics = Property_Metrics(Original_Data)
-    Property_metrics.User_Information_Get()
+    # Property_metrics = Property_Metrics(Original_Data)
+    # Property_metrics.User_Information_Get()
     #Data_Rules = Property_metrics.Metrics_Rules_Set(weights)
     #weight = [1,0.8,5,2]
     #Data_Rules = Property_metrics.Metrics_Rules(Data_drop_qartile,weight)
