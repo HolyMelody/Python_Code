@@ -40,8 +40,16 @@ import seaborn as sns
 from tqdm import tqdm
 import time
 
+#多输出分类
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.preprocessing import LabelEncoder
+
 class Data_Processing():
     def __init__(self):
+        self.data = pd.read_csv('data.csv')  
+        self.Features = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth']
+
+    def Start_Processing(self):
         pass
 
     #先行按沙滩名分类
@@ -285,17 +293,39 @@ class Data_Processing():
         plt.show()
         print("热图已经绘制完毕！")
     
-    def Data_Padding_As_Beach_name(self, data, Features,Fill_Way='Deficiency'):#'Negative''Quartile'
-        data = data.copy()
-        columns_to_process = Features
-        
+    def Data_Padding_As_Beach_name(self,Fill_Way='Deficiency'):#'Negative''Quartile'
+        data = self.data.copy()
+
+        # 在数据中提取月份信息   
+        data['Measurement_Date_And_Time'] = pd.to_datetime(data['Measurement_Date_And_Time'])
+        # 提取月份信息并存储为新列
+        data['Month'] = data['Measurement_Date_And_Time'].dt.month
+        #将data['Month'] 数据类型变为str
+        data['Month'] = data['Month'].astype(str)
+        print("是否有缺失值：",data['Month'].isnull().any())
+        data = data.dropna(subset=['Month'])
+        print("是否有缺失值：",data['Month'].isnull().any())
+
+
+        columns_to_process = self.Features
+        print("正在按照'Beach_Name'列进行数据填充！")
         # 填充负数值和缺失值
         if Fill_Way == 'Deficiency':
             for column in columns_to_process:
                 # Fill missing and negative values with the mean of non-negative values for each beach
                 filled_values = data.groupby('Beach_Name')[column].apply(lambda x: x.mask(x < 0, x[x >= 0].mean()).fillna(x[x >= 0].mean())).reset_index(level=0, drop=True)
                 data[column] = filled_values
-            print("负数值和缺失值已经填充完毕！")
+            for column in columns_to_process:
+                error = data.isnull().any().any() or (data[columns_to_process] < 0).any().any()
+                if error == False:
+                    print("缺失值已经填充完毕！")
+                    break
+                else:
+                    print("填充失败，直接删除有缺失值和负数值的行！")
+                    # Fill missing and negative values with the mean of non-negative values for each beach
+                    filled_values = data.groupby('Beach_Name')[column].apply(lambda x: x.mask(x < 0, x[x >= 0].mean()).fillna(x[x >= 0].mean())).reset_index(level=0, drop=True)
+                    data[column] = filled_values
+
         ##只填充缺失值
         elif Fill_Way == 'Negative':
             for column in columns_to_process:
@@ -309,7 +339,6 @@ class Data_Processing():
         print("是的，按照'Beach_Name'列进行数据填充完成！")
         #.to_csv('Data_padding_as_beach_name.csv')
         data_padded.to_csv('Data_padding_as_beach_name.csv',index=False)
-        
         return data_padded
     
 
@@ -331,35 +360,37 @@ class Data_Processing():
         print("是的，离群值已经处理完毕！")
         return processed_data
     #将填充结束后的数据装换为训练接口
-    def Return_Port(self,data,Features):
-        columns_to_process = Features
-        X=[]
-        Y=[]
-        X = np.array(data[columns_to_process])
-        Y = np.array(data['Beach_Name'])
-        return X,Y
+    def Return_Port(self):
+        data = self.Data_Padding_As_Beach_name().copy()  # 默认调用
+        Features = self.Features
 
-class Data_Classification:
+    
+        X = np.array(data[Features])
+        Y = np.array(data[['Beach_Name','Month']])  # 包括沙滩名称和月份信息
+        #检测X和Y长度是否相等
+
+        return X, Y
+
+class Data_Classification():
     def __init__(self):
         pass
-
-    def Start_Classification(self,Data_padded,features):
+    def Start_Classification(self):
         #Return_Port
-        Data_padding_as_beach_name=Data_padded
-        Features = features 
-        X,y = Data_Processing().Return_Port(Data_padding_as_beach_name,Features)
+        X,y = Data_Processing().Return_Port()
+        print("数据已经准备完毕！")
         for i in tqdm(range(10)):
             #time.sleep(0.1)  # 模拟训练过程
-            train_accuracy, test_accuracy= self.\
-            Random_Forest_Classification(X, y)
+            accuracies,models= self.\
+            Random_Forest_Classification_Plus(X,y)
             #Train_and_Evaluate_Neural_Network(X, y)
             #train_and_evaluate_decision_tree(X,y)
 
 
-        print("训练集准确率：{:.2f}%".format(train_accuracy * 100))
-        print("测试集准确率：{:.2f}%".format(test_accuracy * 100))
-        #print("交叉验证准确率：{:.2f}%".format(mean_cv_accuracy * 100))
+        # 输出训练模型的准确率
+        for i, (train_accuracy, test_accuracy) in enumerate(zip(accuracies[0], accuracies[1])):
+            print(f"模型 {i+1} 的训练准确率: {train_accuracy*100}%, 测试准确率: {test_accuracy*100}%")
 
+        return models
 
     def train_and_evaluate_decision_tree(self,X, y):
         """
@@ -418,7 +449,41 @@ class Data_Classification:
         y_test_pred = rf.predict(X_test)
         test_accuracy = accuracy_score(y_test, y_test_pred)
         print("随机森林模型训练！")
-        return train_accuracy, test_accuracy
+        return [train_accuracy, test_accuracy] , rf
+    def Random_Forest_Classification_Plus(self,X, Y):
+        # 拆分数据集
+        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+        # 训练多个独立的随机森林模型
+        models = {}
+        for column in range(Y.shape[1]):
+            rf = RandomForestClassifier()
+            rf.fit(X_train, Y_train[:, column])
+            models[column] = rf
+
+        # 预测并计算准确率
+        train_accuracies = []
+        test_accuracies = []
+        for column, model in models.items():
+            y_train_pred = model.predict(X_train)
+            train_accuracy = accuracy_score(Y_train[:, column], y_train_pred)
+            train_accuracies.append(train_accuracy)
+            y_test_pred = model.predict(X_test)
+            test_accuracy = accuracy_score(Y_test[:, column], y_test_pred)
+            test_accuracies.append(test_accuracy)
+
+        print("多个独立的随机森林模型训练完成！")
+
+        return [train_accuracies, test_accuracies], models
+    def Random_Forest_Prediction(self, X_new):
+        # 调用 Random_Forest_Classification 函数来训练模型并获取训练准确率和测试准确率
+        models = self.Start_Classification()
+        predictions = []
+        for column, model in models.items():
+            prediction = model.predict(X_new)
+            predictions.append(prediction)
+
+        return predictions
     # 定义神经网络模型神经网络函数名：train_and_evaluate_neural_network
     def Train_and_Evaluate_Neural_Network(self,X, y):
         """
@@ -473,34 +538,15 @@ class Data_Classification:
 
 
 class Property_Metrics:
-    def __init__(self,Original_Data):
+    def __init__(self):
         #冲浪英文为surfing
-        Features_Surfing = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period']
-        Data_processing = Data_Processing()
-        self.Data_Default = Data_processing.Data_Drop_Qartile(Original_Data,Features_Surfing)
+        pass
+        
     def Metrics_Rules_Set(self,weight):
-        data=self.Data_Default
-        #遍历'Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period',
-        Data_Rules = data.copy()
-        print(weight)
-        print(weight[0])
-        #print(weight[0].dtype)
-        print(Data_Rules['Water_Temperature'].dtype)
-        #定义一个规则
-        Data_Rules['Metrics'] = Data_Rules['Water_Temperature']+\
-            Data_Rules['Turbidity']+\
-            100*Data_Rules['Wave_Height']+\
-            Data_Rules['Wave_Period']
-        Data_Rules['Metrics_get'] = weight[0]*Data_Rules['Water_Temperature']+\
-            weight[1]*Data_Rules['Turbidity']+\
-            weight[2]*100*Data_Rules['Wave_Height']+\
-            weight[3]*Data_Rules['Wave_Period']
-        Data_Rules['Is_Exception'] = np.where(Data_Rules['Metrics']>100,1,0)
-        Data_Rules.to_csv('Data_Rules.csv')
-        Data_Rules.groupby('Beach_Name')['Metrics'].describe().to_csv('Data_Rules_Features.csv')
-        print("Yes,Data_Rules_Set complete!")
-        return Data_Rules
-
+       #调用Random_Forest_Classification，根据输入，预测推荐沙滩
+        Prediction = Data_Classification()
+        Random_Forest_Prediction = Prediction.Random_Forest_Prediction(weight)
+        print("根据你的选择，推荐在{}月份去{}沙滩进行冲浪！".format(Random_Forest_Prediction[1],Random_Forest_Prediction[0]))
     def User_Information_Get(self):
         weights = [] 
         print("*****************************************")
@@ -511,50 +557,57 @@ class Property_Metrics:
             '''
             数值尽量
             '''
-            temperature = input("请输入你需要的大概水温(出于安全,请在17-22之间)")#9.1-29.6
+            temperature = input("请输入你需要的大概水温(出于安全,请在17-22摄氏度之间)")#9.1-29.6
             turbidity = input("请输入你需要的大概浑浊度(出于安全,请在0-5之间)")#0.01-14.8
-            wave_height = input("请输入你需要的大概波浪高度(出于安全,请在11-19之间)")#1.3-320
-            wave_period = input("请输入你需要的大概波浪周期(出于安全,请在3-4之间)")#1-8
-            weights = [float(-temperature),float(-turbidity),float(-wave_height),float(wave_period)]
+            wave_height = input("请输入你需要的大概波浪高度(出于安全,请在11-19m之间)")#1.3-320
+            wave_period = input("请输入你需要的大概波浪周期(出于安全,请在3-4s之间)")#1-8
+            water_height = input("请输入你需要的大概水深(出于安全,请在0-3m之间)")#0-3
+            weights = [float(temperature),float(turbidity),float(wave_height),float(wave_period)]
+            print("将为你推荐安全，适合新手冲浪的沙滩！")
         elif level == 'n':
             temperature = input("请输入你需要的大概水温(出于体验,推荐17以下之间)")#9.1-29.6
             turbidity = input("请输入你需要的大概浑浊度(出于体验,请在0-5之间)")#0.01-14.8
-            wave_height = input("请输入你需要的大概波浪高度(出于体验,请在11-19之间)")#1.3-320
-            wave_period = input("请输入你需要的大概波浪周期(出于体验,请在3-4之间)")#1-8
-            weights = [float(-temperature),float(turbidity),float(wave_height),float(wave_period)]
+            wave_height = input("请输入你需要的大概波浪高度(出于体验,请在11-19m之间)")#1.3-320
+            wave_period = input("请输入你需要的大概波浪周期(出于体验,请在3-4s之间)")#1-8
+            water_height = input("请输入你需要的大概水深(出于体验,请在0-3m之间)")#0-3
+            weights = [float(temperature),float(turbidity),float(wave_height),float(wave_period),float(water_height)]
+            print("将为你推荐适合有一定冲浪经验的刺激沙滩！")
+        elif level == 'd':
+            weights = [17,3,14,3.4,2]
+            print("将为你推荐适合有一定冲浪经验的刺激沙滩！")
         else:
             print("输入错误！")
-        self.Metrics_Rules_Set(weights)
-        print(weights == [20,5,15,4])
+        self.Metrics_Rules_Set(np.array(weights).reshape(1, -1))
         print("信息已经录入完毕！")
 #主函数
 if __name__ == "__main__":
     #从本地读取数据
     # script_path = os.path.dirname(os.path.abspath(__file__))
     # file_path = os.path.join(script_path, "data.csv")
-    Original_Data = pd.read_csv('data.csv')  
-    Features_to_process = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth','Battery_Life']
-    Features = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth']
+    #Original_Data = pd.read_csv('data.csv')  
+    #Features_to_process = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth']
+    #Features = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth']
     #数据处理
-    Data_processing = Data_Processing()
+    #Data_processing = Data_Processing()
     #Data_as_beach_name = Data_Processing.Data_As_Beach_Name(Original_Data)
     #Data_Processing.Visualize_Missing_and_Outliers(Original_Data,Features_to_process)
-    Data_padding_as_beach_name = Data_processing.Data_Padding_As_Beach_name(Original_Data,Features_to_process,Fill_Way='Negative')
+    #Data_padding_as_beach_name = Data_processing.Data_Padding_As_Beach_name(Original_Data,Features_to_process,Fill_Way='Negative')
     #Data_drop_qartile = Data_Processing.Data_Drop_Qartile(Original_Data,Features_to_process)
     #沙滩分类
     #Start_Classification
     # Data_classification = Data_Classification()
     # Data_classification.Start_Classification(Data_padding_as_beach_name,Features)
     #Data_processing.Data_As_Beach_Name(Original_Data,Features_to_process)
-    Features_Anasysis = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth','Battery_Life']
-    Data_processing.Visualize_Correlation(Original_Data,'Transducer_Depth',Features_Anasysis)
+    #Features_Anasysis = ['Water_Temperature', 'Turbidity', 'Wave_Height','Wave_Period','Transducer_Depth','Battery_Life']
+    #Data_processing.Visualize_Correlation(Original_Data,'Transducer_Depth',Features_Anasysis)
     
     #冲浪指数
     # Property_metrics = Property_Metrics(Original_Data)
     # Property_metrics.User_Information_Get()
     #Data_Rules = Property_metrics.Metrics_Rules_Set(weights)
-    #weight = [1,0.8,5,2]
-    #Data_Rules = Property_metrics.Metrics_Rules(Data_drop_qartile,weight)
+    User_Information_Get = Property_Metrics()
+    User_Information_Get.User_Information_Get()
+   
     #Data_drop_qartile.to_csv('Data_drop_qartile.csv')
     #Data_Rules.describe().to_csv('Data_Drop_Qartile_Features.csv')
     #print("Yes,Data_Rules complete!")
